@@ -1,0 +1,75 @@
+GoAPRS
+------
+
+GoAPRS is a tool to export Google Latitude personal location data to the APRS
+network.
+
+Requirements
+------------
+
+Longitude - http://github.com/eharmon/longitude
+Python sqlite3
+Python argpase
+Python telnetlib
+
+How to use
+----------
+
+GoAPRS does not fetch data from Google Latitude, that is the job of the
+Longitude script. Once Longitude has placed the information in the database,
+GoAPRS takes it and submits it to the APRS network, allowing you to update
+your APRS location via Google Latitude.
+
+Thus, GoAPRS is not just a Google Latitude to APRS sync, but a program to sync
+any location data to APRS, so long as it follows the database format which
+Longitude produces.
+
+To set up GoAPRS, first set up Longitude, then choose from the options listed
+in the Usage section to configure GoAPRS to your requirements. APRS uses a
+hash based authentication scheme, in order to generate your password enter
+your amateur radio callsign into the following website:
+http://www.rimboy.com/rimdistro/rimigate/calculate/index.php
+
+You may wish to add a similar cron job for GoAPRS as you did for Longitude in
+order to automatically keep your information updated. Please note, however,
+that you most likely want to update at 5 minute or greater intervals, so as to
+avoid abusing the APRS network.
+
+Usage
+-----
+
+usage: goaprs.py [-h] [--db [file]] --callsign [callsign] --password
+                 [password] [--comment [comment]] [--host [hostname]] [-v]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --db [file], -d [file]
+                        sqlite storage DB for storing waypoints, defaults to
+                        'loc_db' in the current directory
+  --callsign [callsign], -c [callsign]
+                        amateur radio callsign
+  --password [password], -p [password]
+                        APRS password, can be calculated at
+                        http://www.rimboy.com/rimdistro/rimigate/calculate/index.php
+  --comment [comment], -C [comment]
+                        custom comment for APRS packet, defaults to GoAPRS
+                        information
+  --host [hostname], -H [hostname]
+                        hostname for APRS connectivity, defaults to the North
+                        American APRS2 pool
+  -v                    be verbose
+
+License
+-------
+
+GoAPRS is licensed under the GNU GPL version 3. The full license is included
+with this source in the LICENSE file.
+
+Copyright
+---------
+
+Copyright (c) 2010 Eric Harmon
+
+Derived from lat.pl:
+
+Copyright (c) 2009 Lee Burton
