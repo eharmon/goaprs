@@ -54,6 +54,10 @@ optional arguments:
   --comment [comment], -C [comment]
                         custom comment for APRS packet, defaults to GoAPRS
                         information
+  --icon [code], -i [code]
+                        APRS icon, list of codes availible here:
+                        http://wa8lmf.net/aprs/APRS_symbols.htm (currently
+                        supports only primary symbol table)
   --host [hostname], -H [hostname]
                         hostname for APRS connectivity, defaults to the North
                         American APRS2 pool

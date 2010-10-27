@@ -6,8 +6,10 @@ import sqlite3
 import argparse
 import os
 import telnetlib
+import sys
 
-from datetime import datetime
+#from datetime import datetime
+import time
 from operator import xor
 
 def convertDegrees(coord):
@@ -20,6 +22,7 @@ parser.add_argument('--db', '-d', metavar='file', nargs='?', type=str, default='
 parser.add_argument('--callsign', '-c', metavar='callsign', nargs='?', type=str, required=True, dest='callsign', help='amateur radio callsign')
 parser.add_argument('--password', '-p', metavar='password', nargs='?', type=str, required=True, dest='password', help='APRS password')
 parser.add_argument('--comment', '-C', metavar='comment', nargs='?', type=str, default='updated by GoAPRS - http://bit.ly/goaprs', dest='message', help='custom comment for APRS packet')
+parser.add_argument('--icon', '-i', metavar='code', nargs='?', type=str, default='$', dest='icon', help='APRS icon, list of codes available here: http://wa8lmf.net/aprs/APRS_symbols.htm (currently supports only primary symbol table)')
 parser.add_argument('--host', '-H', metavar='hostname', nargs='?', type=str, default='noam.aprs2.net', dest='hostname', help='hostname for APRS connectivity')
 parser.add_argument('-v', action='store_true', dest='verbose', help='be verbose')
 args = parser.parse_args()
@@ -56,13 +59,13 @@ if(lon[0] < 0):
 else:
     lon[2] = 'E'
 
-#nmea_packet = '$GPRMC,%s.000,A,%02d%07.4f,%s,%03d%07.4f,%s,,,%s,,*' % (datetime.fromtimestamp(loc[0]/1000).strftime("%H%M%S"), abs(lat[0]), lat[1], lat[2], abs(lon[0]), lon[1], lon[2], datetime.fromtimestamp(loc[0]/1000).strftime("%d%m%y"))
+loc_date = time.gmtime(loc[0]/1000)
 
-# Calculate an NMEA packet checksum, http://blog.lucanatali.it/2006/12/nmea-checksum-in-python.html
-#checksum = reduce(xor, map(ord, nmea_packet[1:nmea_packet.index('*')]))
-#checksum = '%2.2X' % (checksum)
-#aprs_nmea_packet = '%s-10>APZGOO,TCPIP*,qAC,%s:%s%sPants' % (args.callsign, args.callsign, nmea_packet, checksum)
-#aprs_info_packet = '%s-10>APRS:>%s/%s - %s' % (args.callsign, datetime.fromtimestamp(loc[0]/1000).strftime('%d%H%M'), args.callsign, args.message)
+# If our Latitude data is more than 6 hours old, just stop beaconing
+if(loc_date < time.gmtime(time.time() - 6 * 60 * 60)):
+    if(args.verbose):
+        print 'Location data old, not beaconing...\n'
+    sys.exit()
 
 # We are using the following features of the format:
 #
@@ -72,11 +75,11 @@ else:
 # :/                                    begin the packet information, we are using a timestamp but don't support APRS messaging
 # strftime('%H%M%S')                    timestamp
 # <next section>                        format the position data
-# $                                     indicate we wish to use the phone icon for our device (the previous / divider in the position data indicates using icon tileset 1)
+# args.icon                             indicate the icon to use from the primary tileset
 # args.message                          the message for this packet the user wanted to bundle
 # /A=000000                             altitude in feet (currently unused)
 
-aprs_packet = '%s-10>APZG01,TCPIP*,qAC,%s-10:/%sh%02d%05.2f%s/%03d%05.2f%s$%s' % (args.callsign, args.callsign, datetime.fromtimestamp(loc[0]/1000).strftime('%H%M%S'), abs(lat[0]), lat[1], lat[2], abs(lon[0]), lon[1], lon[2], args.message)
+aprs_packet = '%s-10>APZG01,TCPIP*,qAC,%s-10:/%sh%02d%05.2f%s/%03d%05.2f%s%s%s' % (args.callsign, args.callsign, time.strftime('%H%M%S', loc_date), abs(lat[0]), lat[1], lat[2], abs(lon[0]), lon[1], lon[2], args.icon, args.message)
 aprs_info_packet = '%s-10>APZG01,TCPIP*,qAC,%s-10:>%s - Accurate to %d meters' % (args.callsign, args.callsign, args.callsign, loc[3])
 
 if(args.verbose):
@@ -92,8 +95,6 @@ tel.read_until('verified')
 if(args.verbose):
     print 'Logged in...\n'
 
-#tel.write('%s\n' % (aprs_nmea_packet))
-#tel.write('%s\n' % (aprs_info_packet))
 tel.write('%s\r\n' % (aprs_packet))
 tel.write('%s\r\n' % (aprs_info_packet))
 
