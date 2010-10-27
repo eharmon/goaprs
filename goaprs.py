@@ -8,6 +8,8 @@ import os
 import telnetlib
 import sys
 import time
+import urllib
+import json
 
 def convertDegrees(coord):
     deg = int(coord)
@@ -81,6 +83,15 @@ def main():
         help='hostname for APRS connectivity'
     )
     parser.add_argument(
+        '--api',
+        '-a',
+        metavar='key',
+        nargs='?',
+        type=str,
+        dest='api_key',
+        help='aprs.fi api key (optionally used to reduce rebroadcasted locations)'
+    )
+    parser.add_argument(
         '-v',
         action='store_true',
         dest='verbose',
@@ -106,6 +117,34 @@ def main():
     c.execute('select * from tracks_location order by timestamp desc limit 1')
     loc = c.fetchone()
 
+    if args.verbose: print 'Checking data...\n'
+
+    loc_date = time.gmtime(loc[0]/1000)
+    if args.api_key:
+        if args.verbose: print 'Checking last update on aprs.fi...\n'
+        params = urllib.urlencode({
+            'what': 'loc',
+            'name': args.callsign + '-10',
+            'apikey': args.api_key,
+            'format': 'json',
+        })
+        aprsfi_json = urllib.urlopen('http://api.aprs.fi/api/get?%s' % params)
+        aprsfi = json.loads(aprsfi_json.read())
+        old_loc = aprsfi['entries'][0];
+        # Check if our location has changed by a significant amount, or if we
+        # haven't updated our location in the last 6 hours because we haven't
+        # moved.
+        if abs(float(old_loc['lat']) - loc[1]) < 0.0001 and \
+            abs(float(old_loc['lng']) - loc[2]) < 0.0001 and \
+            old_loc['time'] > time.time() - 6 * 60 * 60:
+            if args.verbose: print 'Location already submitted, quitting...\n'
+            sys.exit()
+
+    # If our Latitude data is more than 6 hours old, just stop beaconing
+    if loc_date < time.gmtime(time.time() - 6 * 60 * 60):
+        if args.verbose: print 'Location data old, not beaconing...\n'
+        sys.exit()
+
     if args.verbose: print 'Building packet...\n'
 
     lat = convertDegrees(loc[1])
@@ -119,13 +158,6 @@ def main():
         lon[2] = 'W'
     else:
         lon[2] = 'E'
-
-    loc_date = time.gmtime(loc[0]/1000)
-
-    # If our Latitude data is more than 6 hours old, just stop beaconing
-    if loc_date < time.gmtime(time.time() - 6 * 60 * 60):
-        if args.verbose: print 'Location data old, not beaconing...\n'
-        sys.exit()
 
     # We are using the following features of the format:
     #
