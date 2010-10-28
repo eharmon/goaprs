@@ -130,15 +130,18 @@ def main():
         })
         aprsfi_json = urllib.urlopen('http://api.aprs.fi/api/get?%s' % params)
         aprsfi = json.loads(aprsfi_json.read())
-        old_loc = aprsfi['entries'][0];
-        # Check if our location has changed by a significant amount, or if we
-        # haven't updated our location in the last 6 hours because we haven't
-        # moved.
-        if abs(float(old_loc['lat']) - loc[1]) < 0.0001 and \
-            abs(float(old_loc['lng']) - loc[2]) < 0.0001 and \
-            old_loc['time'] > time.time() - 6 * 60 * 60:
-            if args.verbose: print 'Location already submitted, quitting...\n'
-            sys.exit()
+        if aprsfi['result'] == 'ok':
+            old_loc = aprsfi['entries'][0]
+            # Check if our location has changed by a significant amount, or if
+            # we haven't updated our location in the last 6 hours because we
+            # haven't moved.
+            if abs(float(old_loc['lat']) - loc[1]) < 0.0001 and \
+                abs(float(old_loc['lng']) - loc[2]) < 0.0001 and \
+                float(old_loc['lasttime']) > (time.time() - 6 * 60 * 60):
+                if args.verbose: print 'Location already submitted, quitting...\n'
+                sys.exit()
+        else:
+            if args.verbose: print 'Problem querying aprs.fi...\n'
 
     # If our Latitude data is more than 6 hours old, just stop beaconing
     if loc_date < time.gmtime(time.time() - 6 * 60 * 60):
